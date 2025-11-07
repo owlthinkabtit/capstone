@@ -1,27 +1,46 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-# Create your models here.
-class Tag(models.Model):
-  name = models.CharField(max_length=50, unique=True)
+class Genre(models.Model):
+    name = models.CharField(max_length=50, unique=True)
 
-  def __str__(self): 
-    return self.name 
+    def __str__(self):
+        return self.name
 
-class Item(models.Model):
-  owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="items")
-  title = models.CharField(max_length=120)
-  description = models.TextField(blank=True)
-  tags = models.ManyToManyField(Tag, blank=True, related_name="items")
-  created_at = models.DateTimeField(auto_now_add=True)
+class Movie(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    release_year = models.PositiveIntegerField(null=True, blank=True)
+    poster_url = models.URLField(blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
 
-  def __str__(self): 
-    return self.title
-  
-class Favorite(models.Model):
-  user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
-  item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="favorited_by")
-  created_at = models.DateTimeField(auto_now_add=True)
+    genres = models.ManyToManyField(Genre, related_name="movies", blank=True)
 
-  class Meta:
-    unique_together = ("user", "item")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+class Watchlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="watchlist")
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name="in_watchlists")
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "movie")
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    display_name = models.CharField(max_length=100, blank=True)
+    avatar_url = models.URLField(blank=True)
+    bio = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.display_name or self.user.username
+
+@receiver(post_save, sender=User)
+def create_profile_for_user(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)

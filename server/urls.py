@@ -17,14 +17,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from core.views import ItemViewSet, TagViewSet, stats
+from core.views import MovieViewSet, GenreViewSet, stats, me, register, login_view, logout_view
 
 router = DefaultRouter()
-router.register(r"items", ItemViewSet, basename="item")
-router.register(r"tags", TagViewSet, basename="tag")
+router.register(r"movies", MovieViewSet, basename="movie")
+router.register(r"genres", GenreViewSet, basename="genre")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", include(router.urls)),
     path("api/stats/", stats),
+    path("api/auth/me/", me), 
+    path("api/auth/register/", register),
+    path("api/auth/login/", login_view),
+    path("api/auth/logout/", logout_view),
 ]
