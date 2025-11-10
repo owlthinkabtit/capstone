@@ -4,6 +4,7 @@ function getCookie(name) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+  return "";
 }
 
 async function postJSON(url, data) {
@@ -24,6 +25,7 @@ export async function fetchMe() {
   const res = await fetch(`${API}/auth/me/`, { credentials: "include" });
   return res.json();
 }
+
 export function registerUser(username, password, email) {
   return postJSON(`${API}/auth/register/`, { username, password, email });
 }
@@ -42,6 +44,7 @@ export async function getMovies(activeGenre) {
   const r = await fetch(`${API}/movies/${q}`, { credentials: "include" });
   return r.json();
 }
+
 export function addToWatchlist(id) {
   return postJSON(`${API}/movies/${id}/add_to_watchlist/`);
 }
