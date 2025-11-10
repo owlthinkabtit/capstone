@@ -1,8 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db.models import Count
-
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 
 from rest_framework import response, status, viewsets, permissions, decorators
 from rest_framework.decorators import api_view, permission_classes
@@ -55,13 +54,14 @@ def stats(request):
     return response.Response({"by_genre": list(data)})
 
 
-
+@ensure_csrf_cookie
 @api_view(["GET"])
 def me(request):
     if not request.user.is_authenticated:
         return response.Response({"user": None})
     return response.Response({"user": UserSerializer(request.user).data})
 
+@ensure_csrf_cookie
 @csrf_protect
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -74,9 +74,10 @@ def register(request):
     if User.objects.filter(username=username).exists():
         return response.Response({"error": "username taken"}, status=400)
     user = User.objects.create_user(username=username, email=email, password=password)
-    login(request, user)  # auto-login on register
+    login(request, user)  
     return response.Response({"user": UserSerializer(user).data}, status=201)
 
+@ensure_csrf_cookie
 @csrf_protect
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -92,4 +93,9 @@ def login_view(request):
 @api_view(["POST"])
 def logout_view(request):
     logout(request)
+    return response.Response({"ok": True})
+
+@ensure_csrf_cookie
+@api_view(["GET"])
+def csrf(request):
     return response.Response({"ok": True})

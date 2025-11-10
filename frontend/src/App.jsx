@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import {
-  fetchMe, registerUser, loginUser, logoutUser,
-  getGenres, getMovies, addToWatchlist, removeFromWatchlist
+  registerUser,
+  loginUser,
+  logoutUser,
+  getGenres,
+  getMovies,
+  addToWatchlist,
+  removeFromWatchlist,
+  initAuth,
 } from "./api";
 
-const API_OK = (x) => x; // tiny passthrough for readability
+const API_OK = (x) => x;
 
 function AuthBar({ user, setUser }) {
-  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -22,20 +28,26 @@ function AuthBar({ user, setUser }) {
         const data = await loginUser(username, password);
         setUser(data.user);
       }
-      setUsername(""); setPassword(""); setEmail("");
+      setUsername("");
+      setPassword("");
+      setEmail("");
     } catch (err) {
       alert("Authentication failed. Check inputs and try again.");
-      // optional: console.error(err);
     }
   }
 
   if (user) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-700">Signed in as <b>{user.username}</b></span>
+        <span className="text-sm text-gray-700">
+          Signed in as <b>{user.username}</b>
+        </span>
         <button
           className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100"
-          onClick={async () => { await logoutUser(); setUser(null); }}
+          onClick={async () => {
+            await logoutUser();
+            setUser(null);
+          }}
         >
           Logout
         </button>
@@ -102,7 +114,9 @@ function WatchButton({ movie, user, refreshMovies }) {
   return (
     <button
       onClick={onClick}
-      className={`px-2 py-1 text-sm rounded border ${inList ? "bg-amber-100" : "bg-white hover:bg-gray-100"}`}
+      className={`px-2 py-1 text-sm rounded border ${
+        inList ? "bg-amber-100" : "bg-white hover:bg-gray-100"
+      }`}
       title={inList ? "Remove from Watchlist" : "Add to Watchlist"}
     >
       {inList ? "★ In Watchlist" : "☆ Add to Watchlist"}
@@ -116,21 +130,24 @@ export default function App() {
   const [genres, setGenres] = useState([]);
   const [activeGenre, setActiveGenre] = useState("");
 
-  // On load: get current user (also sets csrftoken cookie)
   useEffect(() => {
-    fetchMe().then(API_OK).then(({ user }) => setUser(user)).catch(() => {});
+    initAuth()
+      .then(setUser)
+      .catch(() => setUser(null));
   }, []);
-
-  // Load genres once
-  useEffect(() => { getGenres().then(setGenres); }, []);
+  
+  useEffect(() => {
+    getGenres().then(setGenres);
+  }, []);
 
   const refreshMovies = async () => {
     const data = await getMovies(activeGenre);
     setMovies(data);
   };
 
-  // Load movies whenever filter changes
-  useEffect(() => { refreshMovies(); }, [activeGenre]);
+  useEffect(() => {
+    refreshMovies();
+  }, [activeGenre]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -139,7 +156,9 @@ export default function App() {
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Film Atlas</h1>
-            <p className="text-sm text-gray-600">Your movie database with watchlists and accounts.</p>
+            <p className="text-sm text-gray-600">
+              Your movie database with watchlists and accounts.
+            </p>
           </div>
           <AuthBar user={user} setUser={setUser} />
         </header>
@@ -148,15 +167,23 @@ export default function App() {
         <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={() => setActiveGenre("")}
-            className={`px-3 py-1.5 rounded-full border text-sm ${activeGenre === "" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+            className={`px-3 py-1.5 rounded-full border text-sm ${
+              activeGenre === ""
+                ? "bg-black text-white"
+                : "bg-white hover:bg-gray-100"
+            }`}
           >
             All
           </button>
-          {genres.map(g => (
+          {genres.map((g) => (
             <button
               key={g.id}
               onClick={() => setActiveGenre(g.name)}
-              className={`px-3 py-1.5 rounded-full border text-sm ${activeGenre === g.name ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+              className={`px-3 py-1.5 rounded-full border text-sm ${
+                activeGenre === g.name
+                  ? "bg-black text-white"
+                  : "bg-white hover:bg-gray-100"
+              }`}
             >
               {g.name}
             </button>
@@ -165,7 +192,8 @@ export default function App() {
 
         {/* Results summary */}
         <div className="text-sm text-gray-700 mb-3">
-          <span className="font-medium">{movies.length}</span> result{movies.length === 1 ? "" : "s"}
+          <span className="font-medium">{movies.length}</span> result
+          {movies.length === 1 ? "" : "s"}
         </div>
 
         {/* Movie Grid */}
@@ -173,8 +201,11 @@ export default function App() {
           <div className="text-gray-500">No movies for this filter yet.</div>
         ) : (
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {movies.map(m => (
-              <li key={m.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            {movies.map((m) => (
+              <li
+                key={m.id}
+                className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
                 <div className="aspect-[2/3] bg-gray-100">
                   {m.poster_url ? (
                     <img
@@ -188,26 +219,40 @@ export default function App() {
                 <div className="p-4 space-y-3">
                   <div className="flex items-baseline justify-between gap-3">
                     <h2 className="font-semibold leading-tight">
-                      {m.title} {m.release_year ? <span className="text-gray-500 text-sm">({m.release_year})</span> : null}
+                      {m.title}{" "}
+                      {m.release_year ? (
+                        <span className="text-gray-500 text-sm">
+                          ({m.release_year})
+                        </span>
+                      ) : null}
                     </h2>
                     {m.rating != null && (
                       <div className="text-sm">
                         <span className="mr-1">⭐</span>
-                        <span className="font-medium">{Number(m.rating).toFixed(1)}</span>
+                        <span className="font-medium">
+                          {Number(m.rating).toFixed(1)}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {m.genres.map(g => (
-                      <span key={g.id} className="px-2 py-0.5 text-xs rounded-full border bg-gray-50">
+                    {m.genres.map((g) => (
+                      <span
+                        key={g.id}
+                        className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                      >
                         {g.name}
                       </span>
                     ))}
                   </div>
 
                   <div className="flex justify-end">
-                    <WatchButton movie={m} user={user} refreshMovies={refreshMovies} />
+                    <WatchButton
+                      movie={m}
+                      user={user}
+                      refreshMovies={refreshMovies}
+                    />
                   </div>
                 </div>
               </li>
