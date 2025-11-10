@@ -98,3 +98,4 @@ npm install
 npm run dev
 ```
 Runs at http://localhost:5173/
+Will finalize once the project is finished.
