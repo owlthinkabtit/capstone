@@ -10,9 +10,7 @@ import {
   initAuth,
 } from "./api";
 
-const API_OK = (x) => x;
-
-function AuthBar({ user, setUser }) {
+function AuthBar({ user, setUser, onAuthChange }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -21,17 +19,18 @@ function AuthBar({ user, setUser }) {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
+      let data;
       if (mode === "register") {
-        const data = await registerUser(username, password, email);
-        setUser(data.user);
+        data = await registerUser(username, password, email);
       } else {
-        const data = await loginUser(username, password);
-        setUser(data.user);
+        data = await loginUser(username, password);
       }
+      setUser(data.user);
       setUsername("");
       setPassword("");
       setEmail("");
-    } catch (err) {
+      onAuthChange?.();
+    } catch {
       alert("Authentication failed. Check inputs and try again.");
     }
   }
@@ -47,6 +46,7 @@ function AuthBar({ user, setUser }) {
           onClick={async () => {
             await logoutUser();
             setUser(null);
+            onAuthChange?.(); 
           }}
         >
           Logout
@@ -97,8 +97,9 @@ function AuthBar({ user, setUser }) {
   );
 }
 
-function WatchButton({ movie, user, refreshMovies }) {
-  if (!user) return null;
+function WatchButton({ movie, user, authReady, refreshMovies }) {
+  if (!authReady || !user) return null;
+
   const inList = movie.in_watchlist;
 
   const onClick = async () => {
@@ -129,13 +130,14 @@ export default function App() {
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
   const [activeGenre, setActiveGenre] = useState("");
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     initAuth()
       .then(setUser)
-      .catch(() => setUser(null));
+      .finally(() => setAuthReady(true));
   }, []);
-  
+
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
@@ -146,8 +148,9 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!authReady) return;
     refreshMovies();
-  }, [activeGenre]);
+  }, [activeGenre, user, authReady]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -160,7 +163,7 @@ export default function App() {
               Your movie database with watchlists and accounts.
             </p>
           </div>
-          <AuthBar user={user} setUser={setUser} />
+          <AuthBar user={user} setUser={setUser} onAuthChange={refreshMovies} />
         </header>
 
         {/* Genre Filter */}
@@ -251,6 +254,7 @@ export default function App() {
                     <WatchButton
                       movie={m}
                       user={user}
+                      authReady={authReady}
                       refreshMovies={refreshMovies}
                     />
                   </div>

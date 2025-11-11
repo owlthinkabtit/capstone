@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.middleware.csrf import get_token
 
 from rest_framework import response, status, viewsets, permissions, decorators
 from rest_framework.decorators import api_view, permission_classes
@@ -99,3 +100,8 @@ def logout_view(request):
 @api_view(["GET"])
 def csrf(request):
     return response.Response({"ok": True})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def csrf_token(request):
+    return response.Response({"csrfToken": get_token(request)})
