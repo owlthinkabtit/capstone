@@ -105,3 +105,10 @@ def csrf(request):
 @permission_classes([AllowAny])
 def csrf_token(request):
     return response.Response({"csrfToken": get_token(request)})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_watchlist(request):
+    movies = Movie.objects.filter(in_watchlists__user=request.user).prefetch_related("genres")
+    ser = MovieSerializer(movies, many=True, context={"request": request})
+    return response.Response(ser.data)

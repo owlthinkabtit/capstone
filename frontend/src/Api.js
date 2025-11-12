@@ -85,3 +85,9 @@ export function addToWatchlist(id) {
 export function removeFromWatchlist(id) {
   return postJSON(`${API}/movies/${id}/remove_from_watchlist/`);
 }
+
+export async function getWatchlist() {
+  const r = await fetch("http://127.0.0.1:8000/api/watchlist/", { credentials:"include"});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}

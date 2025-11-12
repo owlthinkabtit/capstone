@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from core.views import MovieViewSet, GenreViewSet, stats, me, register, login_view, logout_view, csrf_token
+from core.views import MovieViewSet, GenreViewSet, stats, me, register, login_view, logout_view, csrf_token, my_watchlist
 
 router = DefaultRouter()
 router.register(r"movies", MovieViewSet, basename="movie")
@@ -32,4 +32,5 @@ urlpatterns = [
     path("api/auth/login/", login_view),
     path("api/auth/logout/", logout_view),
     path("api/auth/csrf/", csrf_token),
+    path("api/watchlist/", my_watchlist),
 ]

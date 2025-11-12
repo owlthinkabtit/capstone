@@ -8,33 +8,21 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 class MovieSerializer(serializers.ModelSerializer):
-    genres = GenreSerializer(many=True, read_only=True)
-    genre_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Genre.objects.all(), many=True, write_only=True, source="genres"
-    )
     in_watchlist = serializers.SerializerMethodField()
 
     class Meta:
         model = Movie
         fields = [
-            "id",
-            "title",
-            "description",
-            "release_year",
-            "poster_url",
-            "rating",
-            "genres",
-            "genre_ids",
-            "in_watchlist",
-            "created_at",
+            "id", "title", "release_year", "rating", "poster_url",
+            "genres", "in_watchlist",
         ]
 
     def get_in_watchlist(self, obj):
-        user = self.context["request"].user
-        if not user.is_authenticated:
+        request = getattr(self, "context", {}).get("request", None)
+        if not request or not request.user.is_authenticated:
             return False
-        return obj.in_watchlists.filter(user=user).exists()
-
+        return Watchlist.objects.filter(user=request.user, movie=obj).exists()
+    
 class UserSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(source="profile.display_name", read_only=True)
     avatar_url = serializers.URLField(source="profile.avatar_url", read_only=True)
