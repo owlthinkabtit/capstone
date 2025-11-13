@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, Routes, Route, useNavigate } from "react-router-dom";
+import { Link, Routes, Route, useNavigate, useParams } from "react-router-dom";
 import {
   registerUser,
   loginUser,
   logoutUser,
   getGenres,
   getMovies,
+  getMovie,
   getWatchlist,
   addToWatchlist,
   removeFromWatchlist,
@@ -132,13 +133,15 @@ function MoviesPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
   const [activeGenre, setActiveGenre] = useState("");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("");
 
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
 
   const refreshMovies = async () => {
-    const data = await getMovies(activeGenre);
+    const data = await getMovies(activeGenre, query, sort);
     setMovies(data);
   };
 
@@ -149,6 +152,32 @@ function MoviesPage({ user, authReady }) {
 
   return (
     <>
+      {/* Search + Sort */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          className="border rounded px-3 py-1.5 text-sm"
+          placeholder="Search movies…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        <select
+          className="border rounded px-3 py-1.5 text-sm"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
+          <option value="">Sort: Default</option>
+          <option value="rating">Rating (high → low)</option>
+          <option value="year">Release Year (newest → oldest)</option>
+        </select>
+
+        <button
+          className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-100"
+          onClick={refreshMovies}
+        >
+          Apply
+        </button>
+      </div>
       {/* Genre Filter */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
         <button
@@ -231,7 +260,13 @@ function MoviesPage({ user, authReady }) {
                     </span>
                   ))}
                 </div>
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between">
+                  <Link
+                    to={`/movie/${m.id}`}
+                    className="text-xs text-blue-600 underline hover:no-underline"
+                  >
+                    Details
+                  </Link>
                   <WatchButton
                     movie={m}
                     user={user}
@@ -250,13 +285,14 @@ function MoviesPage({ user, authReady }) {
 
 function WatchlistPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);
+  const [busyId, setBusyId] = useState(null);
 
   const load = async () => {
     try {
       const data = await getWatchlist();
       setMovies(data);
-    } catch (e) {
-      setMovies([]); 
+    } catch {
+      setMovies([]);
     }
   };
 
@@ -267,6 +303,16 @@ function WatchlistPage({ user, authReady }) {
     }
     load();
   }, [user, authReady]);
+
+  const handleRemove = async (id) => {
+    try {
+      setBusyId(id);
+      await removeFromWatchlist(id);
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (!authReady) return null;
   if (!user)
@@ -280,7 +326,7 @@ function WatchlistPage({ user, authReady }) {
     <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {movies.map((m) => (
         <li
-          key={m.id}
+          key={`wl-${m.id}`}
           className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
         >
           <div className="aspect-[2/3] bg-gray-100">
@@ -303,19 +349,26 @@ function WatchlistPage({ user, authReady }) {
                   </span>
                 ) : null}
               </h2>
-              {m.rating != null && (
-                <div className="text-sm">
-                  <span className="mr-1">⭐</span>
-                  <span className="font-medium">
-                    {Number(m.rating).toFixed(1)}
-                  </span>
-                </div>
-              )}
+              {/* Remove button */}
+              <button
+                onClick={() => handleRemove(m.id)}
+                disabled={busyId === m.id}
+                className={`px-2 py-1 text-xs rounded border ${
+                  busyId === m.id
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:bg-gray-100"
+                }`}
+                aria-busy={busyId === m.id}
+                title="Remove from Watchlist"
+              >
+                {busyId === m.id ? "Removing…" : "Remove"}
+              </button>
             </div>
+
             <div className="flex flex-wrap gap-2">
               {m.genres.map((g) => (
                 <span
-                  key={g.id}
+                  key={`wl-m${m.id}-g${g.id}-${g.name}`}
                   className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
                 >
                   {g.name}
@@ -326,6 +379,151 @@ function WatchlistPage({ user, authReady }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function MovieDetailPage({ user, authReady }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [movie, setMovie] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    getMovie(id)
+      .then((data) => {
+        if (!cancelled) {
+          setMovie(data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMovie(null);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const handleToggleWatchlist = async () => {
+    if (!user) {
+      alert("Please log in to use your watchlist.");
+      return;
+    }
+    if (!movie) return;
+
+    setBusy(true);
+    try {
+      if (movie.in_watchlist) {
+        await removeFromWatchlist(movie.id);
+      } else {
+        await addToWatchlist(movie.id);
+      }
+      const fresh = await getMovie(movie.id);
+      setMovie(fresh);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!authReady && loading) {
+    return <div className="text-gray-600">Loading…</div>;
+  }
+
+  if (!loading && !movie) {
+    return (
+      <div className="space-y-4">
+        <button className="text-sm underline" onClick={() => navigate(-1)}>
+          ← Back
+        </button>
+        <div className="text-gray-600">Movie not found.</div>
+      </div>
+    );
+  }
+
+  if (!movie) {
+    return <div className="text-gray-600">Loading…</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <button className="text-sm underline" onClick={() => navigate(-1)}>
+        ← Back
+      </button>
+
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="w-full md:w-1/3 bg-gray-100 rounded-lg overflow-hidden">
+          {movie.poster_url ? (
+            <img
+              src={movie.poster_url}
+              alt={`${movie.title} poster`}
+              className="w-full h-full object-cover"
+              onError={(e) => (e.currentTarget.style.display = "none")}
+            />
+          ) : (
+            <div className="p-4 text-gray-500 text-sm">
+              No poster available.
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-3">
+          <h2 className="text-2xl font-semibold">
+            {movie.title}{" "}
+            {movie.release_year ? (
+              <span className="text-gray-500 text-lg">
+                ({movie.release_year})
+              </span>
+            ) : null}
+          </h2>
+
+          {movie.rating != null && (
+            <div className="text-sm">
+              <span className="mr-1">⭐</span>
+              <span className="font-medium">
+                {Number(movie.rating).toFixed(1)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {movie.genres.map((g) => (
+              <span
+                key={`detail-g${g.id}-${g.name}`}
+                className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+              >
+                {g.name}
+              </span>
+            ))}
+          </div>
+
+          <div>
+            <button
+              onClick={handleToggleWatchlist}
+              disabled={busy}
+              className={`mt-3 px-3 py-1.5 text-sm rounded border ${
+                movie.in_watchlist
+                  ? "bg-amber-100"
+                  : "bg-white hover:bg-gray-100"
+              } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              {busy
+                ? "Updating…"
+                : movie.in_watchlist
+                ? "★ In Watchlist"
+                : "☆ Add to Watchlist"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -354,12 +552,7 @@ export default function App() {
               </Link>
             </nav>
           </div>
-          <AuthBar
-            user={user}
-            setUser={setUser}
-            onAuthChange={() => {
-            }}
-          />
+          <AuthBar user={user} setUser={setUser} onAuthChange={() => {}} />
         </header>
 
         <Routes>
@@ -370,6 +563,10 @@ export default function App() {
           <Route
             path="/watchlist"
             element={<WatchlistPage user={user} authReady={authReady} />}
+          />
+          <Route
+            path="/movie/:id"
+            element={<MovieDetailPage user={user} authReady={authReady} />}
           />
         </Routes>
       </div>

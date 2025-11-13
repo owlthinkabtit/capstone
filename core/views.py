@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.middleware.csrf import get_token
 
@@ -22,10 +22,25 @@ class MovieViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Movie.objects.all().prefetch_related("genres")
+
         genre = self.request.query_params.get("genre")
+        q = self.request.query_params.get("q", "").strip()
+        sort = self.request.query_params.get("sort", "").strip()
+
         if genre:
             qs = qs.filter(genres__name__iexact=genre)
-        return qs.order_by("-created_at")
+        if q:
+            qs = qs.filter(title__icontains=q)  
+
+        # sorting
+        if sort == "rating":
+            qs = qs.order_by("-rating", "-id")
+        elif sort == "year":
+            qs = qs.order_by("-release_year", "-id")  
+        else:
+            qs = qs.order_by("-id")
+
+        return qs
 
     def perform_create(self, serializer):
         serializer.save()
@@ -112,3 +127,4 @@ def my_watchlist(request):
     movies = Movie.objects.filter(in_watchlists__user=request.user).prefetch_related("genres")
     ser = MovieSerializer(movies, many=True, context={"request": request})
     return response.Response(ser.data)
+

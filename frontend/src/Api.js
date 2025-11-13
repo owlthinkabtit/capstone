@@ -73,9 +73,16 @@ export async function getGenres() {
   const r = await fetch(`${API}/genres/`);
   return r.json();
 }
-export async function getMovies(activeGenre) {
-  const q = activeGenre ? `?genre=${encodeURIComponent(activeGenre)}` : "";
-  const r = await fetch(`${API}/movies/${q}`, { credentials: "include" });
+export async function getMovies(genre = "", q = "", sort = "") {
+  const params = new URLSearchParams();
+  if (genre) params.set("genre", genre);
+  if (q) params.set("q", q);
+  if (sort) params.set("sort", sort);
+
+  const r = await fetch(`${API}/movies/${params.size ? `?${params}` : ""}`, {
+    credentials: "include",
+  });
+
   return r.json();
 }
 
@@ -89,5 +96,15 @@ export function removeFromWatchlist(id) {
 export async function getWatchlist() {
   const r = await fetch("http://127.0.0.1:8000/api/watchlist/", { credentials:"include"});
   if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function getMovie(id) {
+  const r = await fetch(`${API}/movies/${id}/`, {
+    credentials: "include",
+  });
+  if (!r.ok) {
+    throw new Error(await r.text());
+  }
   return r.json();
 }
