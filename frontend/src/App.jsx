@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, Routes, Route, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import {
   registerUser,
   loginUser,
@@ -129,26 +136,80 @@ function WatchButton({ movie, user, authReady, refreshMovies }) {
   );
 }
 
+function MovieSkeletonGrid() {
+  const placeholders = Array.from({ length: 6 });
+
+  return (
+    <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in">
+      {placeholders.map((_, idx) => (
+        <li
+          key={`skeleton-${idx}`}
+          className="bg-white border rounded-xl overflow-hidden shadow-sm"
+        >
+          <div className="aspect-[2/3] bg-gray-200 animate-pulse" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+            <div className="flex gap-2">
+              <div className="h-3 bg-gray-200 rounded w-1/4 animate-pulse" />
+              <div className="h-3 bg-gray-200 rounded w-1/5 animate-pulse" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-5 bg-gray-200 rounded w-1/4 animate-pulse" />
+              <div className="h-5 bg-gray-200 rounded w-1/4 animate-pulse" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function WatchlistSkeletonGrid() {
+  const placeholders = Array.from({ length: 4 });
+  return (
+    <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in">
+      {placeholders.map((_, idx) => (
+        <li
+          key={`wl-skel-${idx}`}
+          className="bg-white border rounded-xl overflow-hidden shadow-sm"
+        >
+          <div className="aspect-[2/3] bg-gray-200 animate-pulse" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse" />
+            <div className="h-3 bg-gray-200 rounded w-1/3 animate-pulse" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function MoviesPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
   const [activeGenre, setActiveGenre] = useState("");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
 
   const refreshMovies = async () => {
-    const data = await getMovies(activeGenre, query, sort);
-    setMovies(data);
+    setLoading(true);
+    try {
+      const data = await getMovies(activeGenre, query, sort);
+      setMovies(data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (!authReady) return;
     refreshMovies();
-  }, [activeGenre, user, authReady]);
+  }, [activeGenre, user, authReady, sort]);
 
   return (
     <>
@@ -174,12 +235,14 @@ function MoviesPage({ user, authReady }) {
         <button
           className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-100"
           onClick={refreshMovies}
+          disabled={loading}
         >
-          Apply
+          {loading ? "Loading…" : "Apply"}
         </button>
       </div>
+
       {/* Genre Filter */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <button
           onClick={() => setActiveGenre("")}
           className={`px-3 py-1.5 rounded-full border text-sm ${
@@ -192,7 +255,7 @@ function MoviesPage({ user, authReady }) {
         </button>
         {genres.map((g) => (
           <button
-            key={g.id}
+            key={`filter-${g.id}-${g.name}`}
             onClick={() => setActiveGenre(g.name)}
             className={`px-3 py-1.5 rounded-full border text-sm ${
               activeGenre === g.name
@@ -207,19 +270,33 @@ function MoviesPage({ user, authReady }) {
 
       {/* Results summary */}
       <div className="text-sm text-gray-700 mb-3">
-        <span className="font-medium">{movies.length}</span> result
-        {movies.length === 1 ? "" : "s"}
+        {loading ? (
+          <span>Loading movies…</span>
+        ) : (
+          <>
+            <span className="font-medium">{movies.length}</span> result
+            {movies.length === 1 ? "" : "s"}
+          </>
+        )}
       </div>
 
-      {/* Grid */}
-      {movies.length === 0 ? (
-        <div className="text-gray-500">No movies for this filter yet.</div>
+      {/* Movie Grid / Empty / Loading */}
+      {loading ? (
+        <MovieSkeletonGrid />
+      ) : movies.length === 0 ? (
+        <div className="text-gray-500">
+          No movies match your current filters.
+          <br />
+          <span className="text-sm">
+            Try clearing the search box or choosing a different genre.
+          </span>
+        </div>
       ) : (
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {movies.map((m) => (
             <li
-              key={m.id}
-              className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              key={`movie-${m.id}`}
+              className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow transition-transform hover:-translate-y-1"
             >
               <div className="aspect-[2/3] bg-gray-100">
                 {m.poster_url ? (
@@ -250,16 +327,20 @@ function MoviesPage({ user, authReady }) {
                     </div>
                   )}
                 </div>
+
                 <div className="flex flex-wrap gap-2">
-                  {m.genres.map((g) => (
-                    <span
-                      key={g.id}
-                      className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
-                    >
-                      {g.name}
-                    </span>
-                  ))}
+                  {m.genres
+                    .filter((g) => g && g.id && g.name)
+                    .map((g) => (
+                      <span
+                        key={`m${m.id}-g${g.id}-${g.name}`}
+                        className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
                 </div>
+
                 <div className="flex items-center justify-between">
                   <Link
                     to={`/movie/${m.id}`}
@@ -286,13 +367,17 @@ function MoviesPage({ user, authReady }) {
 function WatchlistPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);
   const [busyId, setBusyId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
     try {
+      setLoading(true);
       const data = await getWatchlist();
       setMovies(data);
     } catch {
       setMovies([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -315,19 +400,35 @@ function WatchlistPage({ user, authReady }) {
   };
 
   if (!authReady) return null;
-  if (!user)
+
+  if (!user) {
     return (
       <div className="text-gray-600">Please log in to view your watchlist.</div>
     );
+  }
 
-  return movies.length === 0 ? (
-    <div className="text-gray-600">Your watchlist is empty.</div>
-  ) : (
+  if (loading) {
+    return <WatchlistSkeletonGrid />;
+  }
+
+  if (movies.length === 0) {
+    return (
+      <div className="text-gray-600">
+        Your watchlist is empty.
+        <br />
+        <span className="text-sm">
+          Browse the Home page and add some favorites to see them here.
+        </span>
+      </div>
+    );
+  }
+
+  return (
     <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {movies.map((m) => (
         <li
           key={`wl-${m.id}`}
-          className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+          className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow transition-transform hover:-translate-y-1"
         >
           <div className="aspect-[2/3] bg-gray-100">
             {m.poster_url ? (
@@ -349,7 +450,6 @@ function WatchlistPage({ user, authReady }) {
                   </span>
                 ) : null}
               </h2>
-              {/* Remove button */}
               <button
                 onClick={() => handleRemove(m.id)}
                 disabled={busyId === m.id}
@@ -366,14 +466,16 @@ function WatchlistPage({ user, authReady }) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {m.genres.map((g) => (
-                <span
-                  key={`wl-m${m.id}-g${g.id}-${g.name}`}
-                  className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
-                >
-                  {g.name}
-                </span>
-              ))}
+              {m.genres
+                .filter((g) => g && g.id && g.name)
+                .map((g) => (
+                  <span
+                    key={`wl-m${m.id}-g${g.id}-${g.name}`}
+                    className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                  >
+                    {g.name}
+                  </span>
+                ))}
             </div>
           </div>
         </li>
@@ -440,7 +542,10 @@ function MovieDetailPage({ user, authReady }) {
   if (!loading && !movie) {
     return (
       <div className="space-y-4">
-        <button className="text-sm underline" onClick={() => navigate(-1)}>
+        <button
+          className="text-sm text-gray-600 underline hover:no-underline hover:text-black transition-colors"
+          onClick={() => navigate(-1)}
+        >
           ← Back
         </button>
         <div className="text-gray-600">Movie not found.</div>
@@ -454,72 +559,104 @@ function MovieDetailPage({ user, authReady }) {
 
   return (
     <div className="space-y-4">
-      <button className="text-sm underline" onClick={() => navigate(-1)}>
-        ← Back
+      <button
+        className="text-sm text-gray-600 underline hover:no-underline hover:text-black transition-colors"
+        onClick={() => navigate(-1)}
+      >
+        ← Back to results
       </button>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="w-full md:w-1/3 bg-gray-100 rounded-lg overflow-hidden">
-          {movie.poster_url ? (
-            <img
-              src={movie.poster_url}
-              alt={`${movie.title} poster`}
-              className="w-full h-full object-cover"
-              onError={(e) => (e.currentTarget.style.display = "none")}
-            />
-          ) : (
-            <div className="p-4 text-gray-500 text-sm">
-              No poster available.
+      <div className="max-w-3xl mx-auto bg-white border rounded-2xl shadow-sm p-4 md:p-6 space-y-4 fade-in">
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full md:w-1/3 flex justify-center">
+            <div className="bg-gray-100 rounded-lg overflow-hidden max-h-80 w-full">
+              {movie.poster_url ? (
+                <img
+                  src={movie.poster_url}
+                  alt={`${movie.title} poster`}
+                  className="w-full h-full object-contain"
+                  onError={(e) => (e.currentTarget.style.display = "none")}
+                />
+              ) : (
+                <div className="p-4 text-gray-500 text-sm text-center">
+                  No poster available.
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-3">
-          <h2 className="text-2xl font-semibold">
-            {movie.title}{" "}
-            {movie.release_year ? (
-              <span className="text-gray-500 text-lg">
-                ({movie.release_year})
-              </span>
-            ) : null}
-          </h2>
-
-          {movie.rating != null && (
-            <div className="text-sm">
-              <span className="mr-1">⭐</span>
-              <span className="font-medium">
-                {Number(movie.rating).toFixed(1)}
-              </span>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            {movie.genres.map((g) => (
-              <span
-                key={`detail-g${g.id}-${g.name}`}
-                className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
-              >
-                {g.name}
-              </span>
-            ))}
           </div>
 
-          <div>
-            <button
-              onClick={handleToggleWatchlist}
-              disabled={busy}
-              className={`mt-3 px-3 py-1.5 text-sm rounded border ${
-                movie.in_watchlist
-                  ? "bg-amber-100"
-                  : "bg-white hover:bg-gray-100"
-              } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              {busy
-                ? "Updating…"
-                : movie.in_watchlist
-                ? "★ In Watchlist"
-                : "☆ Add to Watchlist"}
-            </button>
+          {/* Text column */}
+          <div className="flex-1 space-y-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold">
+                {movie.title}{" "}
+                {movie.release_year ? (
+                  <span className="text-gray-500 text-lg">
+                    ({movie.release_year})
+                  </span>
+                ) : null}
+              </h2>
+              {movie.rating != null && (
+                <div className="mt-1 text-sm">
+                  <span className="mr-1">⭐</span>
+                  <span className="font-medium">
+                    {Number(movie.rating).toFixed(1)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Genres */}
+            {movie.genres && movie.genres.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                  Genres
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {movie.genres
+                    .filter((g) => g && g.id && g.name)
+                    .map((g) => (
+                      <span
+                        key={`detail-g${g.id}-${g.name}`}
+                        className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {movie.description && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                  Description
+                </h3>
+                <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+                  {movie.description}
+                </p>
+              </div>
+            )}
+
+            {/* Watchlist button */}
+            <div>
+              <button
+                onClick={handleToggleWatchlist}
+                disabled={busy}
+                className={`mt-2 px-3 py-1.5 text-sm rounded border ${
+                  movie.in_watchlist
+                    ? "bg-amber-100"
+                    : "bg-white hover:bg-gray-100"
+                } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {busy
+                  ? "Updating…"
+                  : movie.in_watchlist
+                  ? "★ In Watchlist"
+                  : "☆ Add to Watchlist"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -530,6 +667,7 @@ function MovieDetailPage({ user, authReady }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     initAuth()
@@ -543,11 +681,25 @@ export default function App() {
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-baseline gap-4">
             <h1 className="text-3xl font-bold">Film Atlas</h1>
-            <nav className="text-sm">
-              <Link to="/" className="mr-3 underline hover:no-underline">
+            <nav className="text-sm flex gap-3">
+              <Link
+                to="/"
+                className={
+                  location.pathname === "/"
+                    ? "font-medium text-black underline transition-colors duration-150"
+                    : "text-gray-600 underline hover:no-underline hover:text-black transition-colors duration-150"
+                }
+              >
                 Home
               </Link>
-              <Link to="/watchlist" className="underline hover:no-underline">
+              <Link
+                to="/watchlist"
+                className={
+                  location.pathname.startsWith("/watchlist")
+                    ? "font-medium text-black underline transition-colors duration:150"
+                    : "text-gray-600 underline hover:no-underline hover:text-black transition-colors duration-150"
+                }
+              >
                 My Watchlist
               </Link>
             </nav>
