@@ -605,6 +605,21 @@ function MovieDetailPage({ user, authReady }) {
                 </div>
               )}
             </div>
+            {/* Basic info row */}
+            <div className="text-xs md:text-sm text-gray-600 space-x-3 mt-1">
+              {movie.director && (
+                <span>
+                  <span className="font-semibold">Director:</span>{" "}
+                  {movie.director}
+                </span>
+              )}
+              {movie.runtime_minutes && (
+                <span>
+                  <span className="font-semibold">Runtime:</span>{" "}
+                  {movie.runtime_minutes} min
+                </span>
+              )}
+            </div>
 
             {/* Genres */}
             {movie.genres && movie.genres.length > 0 && (
@@ -613,16 +628,14 @@ function MovieDetailPage({ user, authReady }) {
                   Genres
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {movie.genres
-                    .filter((g) => g && g.id && g.name)
-                    .map((g) => (
-                      <span
-                        key={`detail-g${g.id}-${g.name}`}
-                        className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
-                      >
-                        {g.name}
-                      </span>
-                    ))}
+                  {movie.genres.map((g, index) => (
+                    <span
+                      key={g.id ?? `detail-g-${index}`}
+                      className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                    >
+                      {g.name}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
