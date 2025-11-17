@@ -10,15 +10,16 @@ This project rebuilds an earlier IMDb-style movie site to align with **CS50W’s
 ## Screenshots
 
 ### Home Page
-![Home Page](Screenshot%202025-11-14%20175336.png)
+<img width="1873" height="1014" alt="Screenshot 2025-11-14 175336" src="https://github.com/user-attachments/assets/873aaeed-50b8-464d-9e13-b88966dc0167" />
 
 ### Watchlist Page
-![Watchlist Page](Screenshot%202025-11-14%20175456.png)
+<img width="1903" height="1005" alt="Screenshot 2025-11-14 175456" src="https://github.com/user-attachments/assets/66f5f29d-0818-4552-9471-919f95eb0696" />
 
 ### Movie Detail Page
-![Movie Detail Page](Screenshot%202025-11-14%20175752.png)
+<img width="1853" height="1025" alt="Screenshot 2025-11-14 175752" src="https://github.com/user-attachments/assets/0f9debe2-a044-4924-b653-7166677c8a60" />
 
 ---
+
 
 ## Features
 
