@@ -73,17 +73,23 @@ export async function getGenres() {
   const r = await fetch(`${API}/genres/`);
   return r.json();
 }
-export async function getMovies(genre = "", q = "", sort = "") {
+
+export async function getMovies(genre = "", q = "", sort = "", page = 1) {
   const params = new URLSearchParams();
   if (genre) params.set("genre", genre);
   if (q) params.set("q", q);
   if (sort) params.set("sort", sort);
+  if (page) params.set("page", String(page));
 
-  const r = await fetch(`${API}/movies/${params.size ? `?${params}` : ""}`, {
-    credentials: "include",
-  });
+  const r = await fetch(
+    `${API}/movies/${params.size ? `?${params.toString()}` : ""}`,
+    { credentials: "include" }
+  );
 
-  return r.json();
+  if (!r.ok) {
+    throw new Error(await r.text());
+  }
+  return r.json(); 
 }
 
 export function addToWatchlist(id) {

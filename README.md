@@ -24,17 +24,17 @@ This project rebuilds an earlier IMDb-style movie site to align with **CS50W’s
 ## Features
 
 ### Movie Database
-- Title, description, release year, rating, and poster URL  
+- Title, description, release year, rating, runtime, director, and poster URL  
 - Genre classification with many-to-many relationship  
 - Responsive grid of movie cards  
 - New movie detail page with condensed, readable layout  
 - Search bar for filtering by title  
-- Sort options (rating, year, default)
+- Sort options (rating, year, default, alphabetical order)
 
 ### Filtering & Sorting
 - Dynamic genre filters  
 - Title search filtering  
-- Sort by rating or year  
+- Sort by rating, alphabetical order, or year  
 - All queries powered by Django REST Framework  
 - Real-time updates using React state and fetch API
 

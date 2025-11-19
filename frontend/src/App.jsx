@@ -184,6 +184,7 @@ function WatchlistSkeletonGrid() {
   );
 }
 
+/* -------------------- Movies Grid (Home) -------------------- */
 function MoviesPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
@@ -192,24 +193,41 @@ function MoviesPage({ user, authReady }) {
   const [sort, setSort] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 9; 
+
   useEffect(() => {
     getGenres().then(setGenres);
   }, []);
 
-  const refreshMovies = async () => {
+  const refreshMovies = async (page = 1) => {
     setLoading(true);
     try {
-      const data = await getMovies(activeGenre, query, sort);
-      setMovies(data);
+      const data = await getMovies(activeGenre, query, sort, page);
+      setMovies(data.results || []);
+      setTotalCount(data.count ?? (data.results ? data.results.length : 0));
+      setCurrentPage(page);
     } finally {
       setLoading(false);
     }
   };
 
+
   useEffect(() => {
     if (!authReady) return;
-    refreshMovies();
+    refreshMovies(1);
   }, [activeGenre, user, authReady, sort]);
+
+  const totalPages =
+    totalCount && pageSize ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1;
+
+  const handleApplyFilters = () => {
+    refreshMovies(1);
+  };
+
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
 
   return (
     <>
@@ -230,11 +248,12 @@ function MoviesPage({ user, authReady }) {
           <option value="">Sort: Default</option>
           <option value="rating">Rating (high → low)</option>
           <option value="year">Release Year (newest → oldest)</option>
+          <option value="title">Title (A → Z)</option>
         </select>
 
         <button
           className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-100"
-          onClick={refreshMovies}
+          onClick={handleApplyFilters}
           disabled={loading}
         >
           {loading ? "Loading…" : "Apply"}
@@ -269,13 +288,18 @@ function MoviesPage({ user, authReady }) {
       </div>
 
       {/* Results summary */}
-      <div className="text-sm text-gray-700 mb-3">
+      <div className="text-sm text-gray-700 mb-3 flex flex-wrap items-center gap-2">
         {loading ? (
           <span>Loading movies…</span>
         ) : (
           <>
-            <span className="font-medium">{movies.length}</span> result
-            {movies.length === 1 ? "" : "s"}
+            <span className="font-medium">{totalCount}</span> result
+            {totalCount === 1 ? "" : "s"}
+            {totalPages > 1 && (
+              <span className="text-xs text-gray-500">
+                · Page {currentPage} of {totalPages}
+              </span>
+            )}
           </>
         )}
       </div>
@@ -292,77 +316,114 @@ function MoviesPage({ user, authReady }) {
           </span>
         </div>
       ) : (
-        <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {movies.map((m) => (
-            <li
-              key={`movie-${m.id}`}
-              className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow transition-transform hover:-translate-y-1"
-            >
-              <div className="aspect-[2/3] bg-gray-100">
-                {m.poster_url ? (
-                  <img
-                    src={m.poster_url}
-                    alt={`${m.title} poster`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => (e.currentTarget.style.display = "none")}
-                  />
-                ) : null}
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="font-semibold leading-tight">
-                    {m.title}{" "}
-                    {m.release_year ? (
-                      <span className="text-gray-500 text-sm">
-                        ({m.release_year})
-                      </span>
-                    ) : null}
-                  </h2>
-                  {m.rating != null && (
-                    <div className="text-sm">
-                      <span className="mr-1">⭐</span>
-                      <span className="font-medium">
-                        {Number(m.rating).toFixed(1)}
-                      </span>
-                    </div>
-                  )}
+        <>
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in">
+            {movies.map((m) => (
+              <li
+                key={`movie-${m.id}`}
+                className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow transition-transform hover:-translate-y-1"
+              >
+                <div className="aspect-[2/3] bg-gray-100">
+                  {m.poster_url ? (
+                    <img
+                      src={m.poster_url}
+                      alt={`${m.title} poster`}
+                      className="w-full h-full object-cover"
+                      onError={(e) =>
+                        (e.currentTarget.style.display = "none")
+                      }
+                    />
+                  ) : null}
                 </div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="font-semibold leading-tight">
+                      {m.title}{" "}
+                      {m.release_year ? (
+                        <span className="text-gray-500 text-sm">
+                          ({m.release_year})
+                        </span>
+                      ) : null}
+                    </h2>
+                    {m.rating != null && (
+                      <div className="text-sm">
+                        <span className="mr-1">⭐</span>
+                        <span className="font-medium">
+                          {Number(m.rating).toFixed(1)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {m.genres
-                    .filter((g) => g && g.id && g.name)
-                    .map((g) => (
-                      <span
-                        key={`m${m.id}-g${g.id}-${g.name}`}
-                        className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
-                      >
-                        {g.name}
-                      </span>
-                    ))}
-                </div>
+                  <div className="flex flex-wrap gap-2">
+                    {m.genres
+                      .filter((g) => g && g.id && g.name)
+                      .map((g) => (
+                        <span
+                          key={`m${m.id}-g${g.id}-${g.name}`}
+                          className="px-2 py-0.5 text-xs rounded-full border bg-gray-50"
+                        >
+                          {g.name}
+                        </span>
+                      ))}
+                  </div>
 
-                <div className="flex items-center justify-between">
-                  <Link
-                    to={`/movie/${m.id}`}
-                    className="text-xs text-blue-600 underline hover:no-underline"
-                  >
-                    Details
-                  </Link>
-                  <WatchButton
-                    movie={m}
-                    user={user}
-                    authReady={authReady}
-                    refreshMovies={refreshMovies}
-                  />
+                  <div className="flex items-center justify-between">
+                    <Link
+                      to={`/movie/${m.id}`}
+                      className="text-xs text-blue-600 underline hover:no-underline"
+                    >
+                      Details
+                    </Link>
+                    <WatchButton
+                      movie={m}
+                      user={user}
+                      authReady={authReady}
+                      refreshMovies={() => refreshMovies(currentPage)}
+                    />
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-6 text-sm">
+              <button
+                onClick={() => canGoPrev && refreshMovies(currentPage - 1)}
+                disabled={!canGoPrev || loading}
+                className={`px-3 py-1.5 border rounded ${
+                  !canGoPrev || loading
+                    ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                ← Previous
+              </button>
+              <span className="text-gray-600">
+                Page <span className="font-medium">{currentPage}</span> of{" "}
+                <span className="font-medium">{totalPages}</span>
+              </span>
+              <button
+                onClick={() => canGoNext && refreshMovies(currentPage + 1)}
+                disabled={!canGoNext || loading}
+                className={`px-3 py-1.5 border rounded ${
+                  !canGoNext || loading
+                    ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   );
 }
+
 
 function WatchlistPage({ user, authReady }) {
   const [movies, setMovies] = useState([]);

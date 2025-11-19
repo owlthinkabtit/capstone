@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import Movie, Genre, Watchlist
+from .pagination import MoviePagination
 from .serializers import (
     MovieSerializer,
     GenreSerializer,
@@ -19,6 +20,7 @@ from .serializers import (
 class MovieViewSet(viewsets.ModelViewSet):
     serializer_class = MovieSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = MoviePagination
 
     def get_queryset(self):
         qs = Movie.objects.all().prefetch_related("genres")
@@ -36,7 +38,9 @@ class MovieViewSet(viewsets.ModelViewSet):
         if sort == "rating":
             qs = qs.order_by("-rating", "-id")
         elif sort == "year":
-            qs = qs.order_by("-release_year", "-id")  
+            qs = qs.order_by("-release_year", "-id") 
+        elif sort == "title": 
+            qs = qs.order_by("title", "-id") 
         else:
             qs = qs.order_by("-id")
 
