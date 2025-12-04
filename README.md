@@ -158,3 +158,27 @@ python -m venv venv
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
+```
+Backend run at: http://127.0.01:8000/
+
+## Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend runs at: http://localhost:5173/
+
+---
+
+# Future Enhancements
+- Reviews and star ratings 
+- External metadata from TMDB/OMDb
+- User profile editing
+- Dark mode
+- Trailer embeds or galleries 
+
+---
+
+# CS50W
+This project was created as the capstone for Harvard's **CS50 Web Programming with Python and Javascript**.
