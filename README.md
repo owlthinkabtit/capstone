@@ -159,6 +159,7 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
+Backend run at: http://127.0.01:8000/
 ## Frontend Setup
 ```bash
 cd frontend
